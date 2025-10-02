@@ -1,5 +1,7 @@
-import numpy as np
-import torch
+import pytest
+
+torch = pytest.importorskip("torch")
+np = pytest.importorskip("numpy")
 
 from pipeline.ssl import train_mae1d
 
