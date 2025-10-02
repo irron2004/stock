@@ -59,6 +59,7 @@ class MAE1D(nn.Module):
             nn.ReLU(),
             nn.Conv1d(hidden, in_channels, kernel_size=3, padding=1),
         )
+        self.embedding_dim = hidden
 
     def forward(self, inputs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         latent = self.encoder(inputs)
@@ -99,16 +100,22 @@ def train_mae1d(
             optimizer.step()
 
     model.eval()
-    embeddings: List[np.ndarray] = []
     with torch.no_grad():
-        tensor = torch.from_numpy(sequences.astype(np.float32))
-        inference_loader = DataLoader(tensor, batch_size=1024, shuffle=False)
-        for batch in inference_loader:
-            batch = batch.to(device)
+        total = sequences.shape[0]
+        if total == 0:
+            return model, np.empty((0, model.embedding_dim), dtype=np.float32)
+
+        inference_batch_size = max(1, min(1024, batch_size))
+        embeddings = np.empty((total, model.embedding_dim), dtype=np.float32)
+        offset = 0
+        while offset < total:
+            end = min(offset + inference_batch_size, total)
+            batch_np = np.ascontiguousarray(sequences[offset:end], dtype=np.float32)
+            batch = torch.from_numpy(batch_np).to(device)
             emb, _ = model(batch)
-            embeddings.append(emb.cpu().numpy())
-    stacked = np.vstack(embeddings)
-    return model, stacked
+            embeddings[offset:end] = emb.cpu().numpy().astype(np.float32, copy=False)
+            offset = end
+    return model, embeddings
 
 
 def build_sequence_tensor(
