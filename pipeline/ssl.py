@@ -101,9 +101,11 @@ def train_mae1d(
     model.eval()
     embeddings: List[np.ndarray] = []
     with torch.no_grad():
-        tensor = torch.from_numpy(sequences.astype(np.float32)).to(device)
-        for start in range(0, len(tensor), 1024):
-            emb, _ = model(tensor[start : start + 1024])
+        tensor = torch.from_numpy(sequences.astype(np.float32))
+        inference_loader = DataLoader(tensor, batch_size=1024, shuffle=False)
+        for batch in inference_loader:
+            batch = batch.to(device)
+            emb, _ = model(batch)
             embeddings.append(emb.cpu().numpy())
     stacked = np.vstack(embeddings)
     return model, stacked
