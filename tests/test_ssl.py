@@ -1,12 +1,24 @@
+from importlib.util import module_from_spec, spec_from_file_location
+from pathlib import Path
+
 import pytest
 
-torch = pytest.importorskip("torch")
-np = pytest.importorskip("numpy")
 
-from pipeline.ssl import train_mae1d
+def _load_train_mae1d():
+    spec = spec_from_file_location(
+        "pipeline.ssl", Path(__file__).resolve().parents[1] / "pipeline" / "ssl.py"
+    )
+    assert spec is not None and spec.loader is not None
+    module = module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.train_mae1d
 
 
 def test_train_mae1d_cpu_handles_large_batches():
+    torch = pytest.importorskip("torch", reason="Requires torch for SSL training test")
+    np = pytest.importorskip("numpy", reason="Requires numpy for SSL training test")
+
+    train_mae1d = _load_train_mae1d()
     torch.manual_seed(0)
     np.random.seed(0)
 
