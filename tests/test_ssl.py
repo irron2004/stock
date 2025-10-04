@@ -1,5 +1,7 @@
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
+import sys
+import types
 
 import pytest
 
@@ -10,7 +12,21 @@ def _load_train_mae1d():
     )
     assert spec is not None and spec.loader is not None
     module = module_from_spec(spec)
-    spec.loader.exec_module(module)
+
+    inserted_stub = False
+    if "pandas" not in sys.modules:
+        pandas_stub = types.ModuleType("pandas")
+        pandas_stub.DataFrame = object
+        pandas_stub.Timestamp = object
+        sys.modules["pandas"] = pandas_stub
+        inserted_stub = True
+
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        if inserted_stub:
+            sys.modules.pop("pandas", None)
+
     return module.train_mae1d
 
 
