@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Dict
 
-import numpy as np
+import math
 import pandas as pd
 
 
@@ -24,6 +24,13 @@ def long_short_backtest(
         pos.loc[long_assets] = 1.0 / k
         pos.loc[short_assets] = -1.0 / k
         positions.append(pos)
+    if not positions:
+        return {
+            "mean_daily_net": 0.0,
+            "sharpe_net_annual": 0.0,
+            "turnover_mean": 0.0,
+        }
+
     pos = pd.concat(positions, axis=0).sort_index()
 
     prev_pos = pos.groupby(level=0).shift(1).fillna(0.0)
@@ -34,7 +41,7 @@ def long_short_backtest(
     pnl_net = pnl_gross - costs
     sharpe = 0.0
     if pnl_net.std() > 0:
-        sharpe = pnl_net.mean() / pnl_net.std() * np.sqrt(252)
+        sharpe = pnl_net.mean() / pnl_net.std() * math.sqrt(252)
     return {
         "mean_daily_net": float(pnl_net.mean()),
         "sharpe_net_annual": float(sharpe),

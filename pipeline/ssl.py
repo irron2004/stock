@@ -79,25 +79,26 @@ def train_mae1d(
 ) -> Tuple[MAE1D, np.ndarray]:
     device = device or ("cuda" if torch.cuda.is_available() else "cpu")
     dataset = MaskedAEDataset(sequences, mask_ratio=mask_ratio, mask_len=mask_len)
-    loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True)
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=False)
 
     model = MAE1D(in_channels=sequences.shape[1]).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     mse = nn.MSELoss(reduction="none")
 
     model.train()
-    for _ in range(epochs):
-        for masked, original, mask in loader:
-            masked = masked.to(device)
-            original = original.to(device)
-            mask = mask.to(device)
-            _, reconstruction = model(masked)
-            mask_expanded = mask.unsqueeze(1).expand_as(reconstruction)
-            loss = mse(reconstruction, original)
-            loss = (loss * mask_expanded).sum() / (mask_expanded.sum() + 1e-9)
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+    if len(loader) > 0:
+        for _ in range(epochs):
+            for masked, original, mask in loader:
+                masked = masked.to(device)
+                original = original.to(device)
+                mask = mask.to(device)
+                _, reconstruction = model(masked)
+                mask_expanded = mask.unsqueeze(1).expand_as(reconstruction)
+                loss = mse(reconstruction, original)
+                loss = (loss * mask_expanded).sum() / (mask_expanded.sum() + 1e-9)
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
 
     model.eval()
     with torch.no_grad():
